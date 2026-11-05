@@ -1,0 +1,71 @@
+name: Build Buds Core Control IPA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'BudsCoreControl-ESign-starter.zip'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Unpack app source
+        run: |
+          if [ -f BudsCoreControl-ESign-starter.zip ]; then
+            unzip -o BudsCoreControl-ESign-starter.zip -d source
+            PROJECT_DIR="source/BudsCoreControl"
+          elif [ -f project.yml ]; then
+            PROJECT_DIR="."
+          else
+            echo "Could not find BudsCoreControl source archive or project.yml"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Generate Xcode project
+        run: |
+          cd "$PROJECT_DIR"
+          xcodegen generate --spec project.yml
+
+      - name: Build unsigned iOS app
+        run: |
+          cd "$PROJECT_DIR"
+          xcodebuild \
+            -project BudsCoreControl.xcodeproj \
+            -scheme BudsCoreControl \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$GITHUB_WORKSPACE/build" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA for ESign
+        run: |
+          APP_PATH="$GITHUB_WORKSPACE/build/Build/Products/Release-iphoneos/BudsCoreControl.app"
+          test -d "$APP_PATH"
+          mkdir -p "$GITHUB_WORKSPACE/package/Payload"
+          cp -R "$APP_PATH" "$GITHUB_WORKSPACE/package/Payload/"
+          cd "$GITHUB_WORKSPACE/package"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent Payload "$GITHUB_WORKSPACE/BudsCoreControl-unsigned.ipa"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: BudsCoreControl-unsigned-IPA
+          path: BudsCoreControl-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
