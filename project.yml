@@ -1,0 +1,19 @@
+name: BudsCoreControl
+options:
+  bundleIdPrefix: com.vlad
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  BudsCoreControl:
+    type: application
+    platform: iOS
+    sources:
+      - BudsCoreControl
+    info:
+      path: BudsCoreControl/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vlad.BudsCoreControl
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIUserInterfaceStyle: Automatic
